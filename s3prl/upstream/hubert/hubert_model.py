@@ -72,13 +72,17 @@ class HubertPretrainingConfig:
         default=False,
         metadata={"help": "pad audio to the longest one in the batch if true"},
     )
+    sort_batch_in_length: Optional[bool] = field(
+        default=True,
+        metadata={"help": "whether to sort batch in length(decreasing)."},
+    )
 
 
 @dataclass
 class HubertConfig:
     label_rate: float
-    #label_rate_list: List[float]
-    #use_multiple_frame_rate_label: Optional[bool]
+    label_rate_list: List[float]
+    use_multiple_frame_rate_label: Optional[bool]
     extractor_mode: EXTRACTOR_MODE_CHOICES = field(
         default="default",
         metadata={
@@ -301,14 +305,16 @@ class HubertModel(torch.nn.Module):
             mode=cfg.extractor_mode,
             conv_bias=cfg.conv_bias,
         )
-        feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
+        feature_ds_rate = np.prod([s[2] for s in feature_enc_layers])
+        self.feature_ds_rate = feature_ds_rate
+
         self.use_multiple_frame_rate_label = False
         if hasattr(cfg, 'use_multiple_frame_rate_label'):
             self.use_multiple_frame_rate_label = cfg.use_multiple_frame_rate_label
         if self.use_multiple_frame_rate_label == True :
-            self.feat2tar_ratio = cfg.label_rate_list * feature_ds_rate / task_cfg.sample_rate
+            self.feat2tar_ratio = np.array(cfg.label_rate_list) * feature_ds_rate / task_cfg.sample_rate
         else:
-            self.feat2tar_ratio = cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
+            self.feat2tar_ratio = float(cfg.label_rate) * feature_ds_rate / task_cfg.sample_rate
 
         self.post_extract_proj = (
             nn.Linear(self.embed, cfg.encoder_embed_dim)
@@ -454,15 +460,10 @@ class HubertModel(torch.nn.Module):
         # Trim features to ensure labels exist and then get aligned labels
         feat_tsz = features.size(2)
         targ_tsz = ([t.size(1) for t in target_list])
-        # �޸��˲��ִ��룬���ж����ͬ֡�ʵı�ǩ��ʱ�򣬲����������вü�
-        # if self.feat2tar_ratio * feat_tsz > targ_tsz:
-        #     feat_tsz = int(targ_tsz / self.feat2tar_ratio)
-        #     features = features[..., :feat_tsz]
         if self.use_multiple_frame_rate_label:
             target_inds = [(torch.arange(feat_tsz).float() * r).long() for r in self.feat2tar_ratio]
         else:
             target_inds = [(torch.arange(feat_tsz).float() * self.feat2tar_ratio).long()]
-        # ����Ϊ�˱������֮��ı�ǩԽ�磬��������ǩ���ȵ�idx�滻�����һ����ǩ���
         for i,t in enumerate(target_inds):
             t[t>=targ_tsz[i]] = targ_tsz[i] - 1
         target_list = [t[:, target_inds[i]] for i,t in enumerate(target_list)]
@@ -477,7 +478,9 @@ class HubertModel(torch.nn.Module):
         if extra > 0:
             padding_mask = padding_mask[:, :-extra]
         padding_mask = padding_mask.view(padding_mask.size(0), features.size(1), -1)
-        padding_mask = padding_mask.all(-1)
+        # BUGFIX: the shorter wave in a batch may has a extra frame(when sample_count//hop_len>0)
+        # padding_mask = padding_mask.all(-1)
+        padding_mask = padding_mask.any(-1)
         return padding_mask
 
     def forward(
@@ -514,7 +517,8 @@ class HubertModel(torch.nn.Module):
             x, mask_indices = self.apply_mask(features, padding_mask, target_list)
         else:
             x = features
-            mask_indices = None
+            #mask_indices = None
+            mask_indices = torch.BoolTensor(features.shape).fill_(False).to(padding_mask)
 
         # feature: (B, T, D), float
         # target: (B, T), long

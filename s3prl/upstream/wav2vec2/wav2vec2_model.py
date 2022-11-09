@@ -9,7 +9,6 @@
 import math
 import uuid
 import logging
-from enum import Enum, EnumMeta
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional, Callable, Dict
 
@@ -20,7 +19,31 @@ import torch.nn.functional as F
 from torch import Tensor
 
 logger = logging.getLogger(__name__)
-from fairseq.dataclass import ChoiceEnum
+
+from enum import Enum, EnumMeta
+from typing import List
+class StrEnumMeta(EnumMeta):
+    # this is workaround for submitit pickling leading to instance checks failing in hydra for StrEnum, see
+    # https://github.com/facebookresearch/hydra/issues/1156
+    @classmethod
+    def __instancecheck__(cls, other):
+        return "enum" in str(type(other))
+class StrEnum(Enum, metaclass=StrEnumMeta):
+    def __str__(self):
+        return self.value
+
+    def __eq__(self, other: str):
+        return self.value == other
+
+    def __repr__(self):
+        return self.value
+
+    def __hash__(self):
+        return hash(str(self))
+def ChoiceEnum(choices: List[str]):
+    """return the Enum class used to enforce list of choices"""
+    return StrEnum("Choices", {k: k for k in choices})
+
 EXTRACTOR_MODE_CHOICES = ChoiceEnum(["default", "layer_norm"])
 MASKING_DISTRIBUTION_CHOICES = ChoiceEnum(["static", "uniform", "normal", "poisson"])
 LAYER_TYPE_CHOICES = ChoiceEnum(["transformer", "conformer"])
@@ -1836,8 +1859,34 @@ class TransposeLast(nn.Module):
         return x.transpose(-2, -1)
 
 
+try:
+    from apex.normalization import FusedLayerNorm as _FusedLayerNorm
+
+    has_fused_layernorm = True
+
+    class FusedLayerNorm(_FusedLayerNorm):
+        @torch.jit.unused
+        def forward(self, x):
+            if not x.is_cuda:
+                return super().forward(x)
+            else:
+                with torch.cuda.device(x.device):
+                    return super().forward(x)
+
+except ImportError:
+    has_fused_layernorm = False
+
+
 def LayerNorm(normalized_shape, eps=1e-5, elementwise_affine=True, export=False):
+    if torch.jit.is_scripting() or torch.jit.is_tracing():
+        export = True
+    if not export and torch.cuda.is_available() and has_fused_layernorm:
+        return FusedLayerNorm(normalized_shape, eps, elementwise_affine)
     return torch.nn.LayerNorm(normalized_shape, eps, elementwise_affine)
+
+# offical default layernorm has been change to FusedLayerNorm
+# def LayerNorm(normalized_shape, eps=1e-5, elementwise_affine=True, export=False):
+#     return torch.nn.LayerNorm(normalized_shape, eps, elementwise_affine)
 
 
 class Fp32LayerNorm(nn.LayerNorm):
@@ -2891,12 +2940,16 @@ class ConvFeatureExtractionModel(nn.Module):
             n_out,
             k,
             stride,
+            padding=0,
             is_layer_norm=False,
             is_group_norm=False,
             conv_bias=False,
         ):
             def make_conv():
-                conv = nn.Conv1d(n_in, n_out, k, stride=stride, bias=conv_bias)
+                conv = nn.Conv1d(n_in, n_out, k,
+                                 stride=stride,
+                                 padding=padding,
+                                 bias=conv_bias)
                 nn.init.kaiming_normal_(conv.weight)
                 return conv
 
@@ -2928,8 +2981,13 @@ class ConvFeatureExtractionModel(nn.Module):
         in_d = 1
         self.conv_layers = nn.ModuleList()
         for i, cl in enumerate(conv_layers):
-            assert len(cl) == 3, "invalid conv definition: " + str(cl)
-            (dim, k, stride) = cl
+            # DuJing: support padding
+            assert len(cl) == 3 or len(cl) == 4, "invalid conv definition: " + str(cl)
+            if len(cl) == 3:
+                (dim, k, stride) = cl
+                padding=0
+            elif len(cl) == 4:
+                (dim, k, stride, padding) = cl
 
             self.conv_layers.append(
                 block(
@@ -2937,6 +2995,7 @@ class ConvFeatureExtractionModel(nn.Module):
                     dim,
                     k,
                     stride,
+                    padding=padding,
                     is_layer_norm=mode == "layer_norm",
                     is_group_norm=mode == "default" and i == 0,
                     conv_bias=conv_bias,
@@ -2997,7 +3056,7 @@ class TransformerEncoder(nn.Module):
                 activation_fn="swish",
                 attn_type=args.attn_type,
                 use_fp16=args.fp16,
-                pos_enc_type=args.pos_enc_type,  #  "abs",
+                pos_enc_type="abs", #args.pos_enc_type,  # In offical fairseq code, this is hacked to "abs"
                 encoder_cnn_norm=args.encoder_cnn_norm if hasattr(args, 'encoder_cnn_norm') else 'batch_norm'
             )
         return layer

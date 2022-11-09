@@ -51,7 +51,7 @@ class UpstreamExpert(UpstreamBase):
             self.hook_postprocess = postprocess
 
     def get_downsample_rates(self, key: str) -> int:
-        return 320
+        return self.model.feature_ds_rate
 
     def forward(self, wavs):
         if self.task_cfg.normalize:
@@ -106,7 +106,7 @@ class LegacyUpstreamExpert(UpstreamBase):
             self.hook_postprocess = postprocess
 
     def get_downsample_rates(self, key: str) -> int:
-        return 320
+        return self.model.feature_ds_rate
 
     def forward(self, wavs):
         if self.task_cfg.normalize:
@@ -159,7 +159,7 @@ class LegacyUpstreamExpert(UpstreamBase):
             self.hook_postprocess = postprocess
 
     def get_downsample_rates(self, key: str) -> int:
-        return 320
+        return self.model.feature_ds_rate
 
     def forward(self, wavs):
         if self.task.cfg.normalize:

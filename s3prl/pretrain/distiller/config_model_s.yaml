@@ -1,0 +1,55 @@
+distiller:
+  # Extractor
+  extractor_mode: layer_norm #default
+  extractor_conv_feature_layers: '[(512,10,5,10)] + [(512,3,5)] + [(512,3,2)] + [(512,2,2)] * 2'
+  extractor_dropout: 0.0
+  feature_grad_mult: 0.1
+
+  # Convolutional relative positional encoding
+  conv_pos: 128
+  conv_pos_groups: 16
+
+  # Encoder
+  layer_type: transformer #conformer is not supported yet.
+  encoder_layers: 4
+  encoder_embed_dim: 256
+  encoder_ffn_embed_dim: 1024
+  encoder_attention_heads: 4
+  activation_fn: gelu
+  layer_norm_first: false
+  attention_type: original
+
+  # Dropout
+  dropout: 0.1
+  attention_dropout: 0.1
+  activation_dropout: 0.1
+  encoder_layerdrop: 0.0
+
+  # Output
+  final_dim: 768
+  out_layer_type: expand-last
+
+  # Task & loss
+  n_tasks: 4
+  task_emb_type: expand-last
+  loss_type: l1
+  feat_pen_loss: 0.0
+  cosine_loss: 1.0  # cosine similarity loss
+  pred_layer_id: [3, 6, 9, 12]
+
+  # Initialization
+  init_teacher_conv_layers: true
+  init_teacher_encoder_layers: false
+
+teacher:
+  model: hubert_custom
+  #source: local
+  load_state_dict_strict: false
+  ckpt: /data/megastore/Projects/DuJing/code/s3prl/s3prl/data/pretrained_models/ASR_80fps/hubert_ft_v1.pt
+  n_layers: 12
+
+task:
+  sequence_length: 250000  # 15.6 secs
+
+audio:
+  target_level: None

@@ -41,13 +41,16 @@ def load_converted_model(ckpt: str, **kwargs):
         "task_cfg",
         "model_cfg",
         "model_weight",
-        "dictionaries_symbols",
+        #"dictionaries_symbols",
     ]:
         if required_key not in ckpt_state:
             raise ValueError(
                 f"{ckpt} is not a valid checkpoint since the required key: {required_key} is missing"
             )
 
+    if "dictionaries_symbols" not in ckpt_state:
+        # 如果转换之后的模型没有Dictionary，直接给一个默认的词典，对应4个容量为500个token的词典
+        ckpt_state["dictionaries_symbols"] = 4*[[i for i in range(504)]]
     task_cfg = merge_with_parent(HubertPretrainingConfig, ckpt_state["task_cfg"])
     model_cfg = merge_with_parent(HubertConfig, ckpt_state["model_cfg"])
     model = HubertModel(model_cfg, task_cfg, ckpt_state["dictionaries_symbols"])

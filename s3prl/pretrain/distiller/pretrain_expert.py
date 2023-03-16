@@ -185,7 +185,9 @@ class DistillerForPretrain(nn.Module):
         self.distiller = DistillerModel(config)
 
         self.teacher_config = teacher_config
-        teacher = torch.hub.load("s3prl/s3prl", **teacher_config)
+        #teacher = torch.hub.load("s3prl/s3prl", **teacher_config)
+        from s3prl.upstream.hubert.expert import UpstreamExpert
+        teacher = UpstreamExpert(**teacher_config)
         if (
             teacher_config.model.find("hubert") >= 0
             or teacher_config.model.find("wav2vec2") >= 0
@@ -224,10 +226,10 @@ class DistillerForPretrain(nn.Module):
             self.distiller.feature_extractor.load_state_dict(
                 self.teacher.model.feature_extractor.state_dict()
             )
-            if self.distiller.post_extract_proj is not None:
-                self.distiller.post_extract_proj.load_state_dict(
-                    self.teacher.model.post_extract_proj.state_dict()
-                )
+            # if self.distiller.post_extract_proj is not None:
+            #     self.distiller.post_extract_proj.load_state_dict(
+            #         self.teacher.model.post_extract_proj.state_dict()
+            #     )
 
         if config.init_teacher_encoder_layers:
             print("[DistillerForPretrain] - " "Initializing encoder from teacher")

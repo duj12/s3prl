@@ -37,7 +37,8 @@ class UpstreamExpert(UpstreamBase):
         self.model = PretrainedDistiller(options)
 
     def get_downsample_rates(self, key: str) -> int:
-        return 320
+        #return 320
+        return 200
 
     def forward(self, wavs, no_pred=False):
         _, feat_final, pred, pad_mask, layer_hidden = self.model(

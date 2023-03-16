@@ -170,6 +170,7 @@ class Runner():
             layer_selection = self.args.upstream_layer_selection,
             upstream_device = self.args.device,
             normalize = self.args.upstream_feature_normalize,
+            no_pred = self.args.upstream_no_pred,
         ).to(self.args.device)
 
         return self._init_model(
@@ -286,10 +287,10 @@ class Runner():
 
                     wavs = [torch.FloatTensor(wav).to(self.args.device) for wav in wavs]
                     if self.upstream.trainable:
-                        features = self.upstream.model(wavs)
+                        features = self.upstream.model(wavs, no_pred=self.args.upstream_no_pred)
                     else:
                         with torch.no_grad():
-                            features = self.upstream.model(wavs)
+                            features = self.upstream.model(wavs, no_pred=self.args.upstream_no_pred)
                     features = self.featurizer.model(wavs, features)
 
                     if specaug:
@@ -448,7 +449,7 @@ class Runner():
 
             wavs = [torch.FloatTensor(wav).to(self.args.device) for wav in wavs]
             with torch.no_grad():
-                features = self.upstream.model(wavs)
+                features = self.upstream.model(wavs, no_pred=self.args.upstream_no_pred)
                 features = self.featurizer.model(wavs, features)
                 self.downstream.model(
                     split,

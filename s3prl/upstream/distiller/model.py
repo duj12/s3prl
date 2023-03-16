@@ -37,6 +37,7 @@ class DistillerConfig:
 
         # Transformer encoder
         self.encoder_layers = int(config.get("encoder_layers", 1))
+        self.layer_type = str(config.get("layer_type", "transformer"))
         self.encoder_embed_dim = int(config.get("encoder_embed_dim", 768))
         self.encoder_ffn_embed_dim = int(config.get("encoder_ffn_embed_dim", 3072))
         self.encoder_attention_heads = int(config.get("encoder_attention_heads", 12))
@@ -140,7 +141,10 @@ class DistillerModel(nn.Module):
         )
 
         if config.encoder_layers > 0:
-            self.encoder = TransformerEncoder(config)
+            if config.layer_type == "transformer":
+                self.encoder = TransformerEncoder(config)
+            else: #TODO: add conformer encoder
+                raise NotImplementedError(f"{config.layer_type} is not implemented")
         else:
             self.encoder = nn.GELU()
 
@@ -272,7 +276,13 @@ class DistillerModel(nn.Module):
     def cal_pad_mask(self, pad_mask, max_len):
         """Calculates pad mask after conv."""
         pad_len = (pad_mask > 0).sum(1).long()
-        for _, k_size, s_size in self.conv_layers:
+        for conv_l in self.conv_layers:
+            if len(conv_l) == 3:
+                _, k_size, s_size = conv_l
+            elif len(conv_l) == 4:
+                _, k_size, s_size, _ = conv_l
+            else:
+                raise NotImplementedError(f"conv_layer config  {conv_l} is not allowed.")
             pad_len = torch.div((pad_len - k_size), s_size, rounding_mode="trunc") + 1
 
         new_pad_mask = torch.ones(

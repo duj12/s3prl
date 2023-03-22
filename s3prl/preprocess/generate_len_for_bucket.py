@@ -29,6 +29,9 @@ def get_preprocess_args():
     parser = argparse.ArgumentParser(description='preprocess arguments for any dataset.')
 
     parser.add_argument('-i', '--input_data', default='../LibriSpeech/', type=str, help='Path to your LibriSpeech directory', required=False)
+    parser.add_argument('-s', '--wav_scp', type=str, default="", help='Path to your wav.scp', required=False)
+    parser.add_argument('-t', '--text', type=str, default="", help='Path to your text', required=False)
+
     parser.add_argument('-o', '--output_path', default='./data/', type=str, help='Path to store output', required=False)
     parser.add_argument('-a', '--audio_extension', default='.flac', type=str, help='audio file type (.wav / .flac / .mp3 / etc)', required=False)
     parser.add_argument('-n', '--name', default='len_for_bucket', type=str, help='Name of the output directory', required=False)
@@ -78,6 +81,48 @@ def generate_length(args, tr_set, audio_extension):
     print('All done, saved at', output_dir, 'exit.')
 
 
+def generate_length_and_label(args):
+    print('')
+    wav_scp = args.wav_scp
+    wav_path = {}
+    with open(wav_scp) as fin:
+        for line in fin:
+            line = line.strip().split()
+            wav_path[line[0]] = line[1]
+
+    text = args.text
+    wav_text = {}
+    with open(text) as fin :
+        for line in fin:
+            line = line.strip().split()
+            name = line[0]
+            context = " ".join(line[1:])
+            wav_text[name] = context
+
+    utts = set(wav_path.keys()) & set(wav_text.keys())
+    wav_path = {key: wav_path[key] for key in utts}
+    wav_text = {key: wav_text[key] for key in utts}
+
+    todo = list(wav_path.keys())
+    print(f'Preprocessing data: {len(todo)} audio files found.')
+
+    output_dir = os.path.join(args.output_path, "")
+    if not os.path.exists(output_dir): os.makedirs(output_dir)
+
+    print('Extracting audio length...', flush=True)
+    tr_x = Parallel(n_jobs=args.n_jobs)(delayed(extract_length)(str(wav_path[name])) for name in tqdm(todo))
+
+    # sort by len
+    sorted_todo = [todo[idx] for idx in reversed(np.argsort(tr_x))]
+    # Dump data
+    df = pd.DataFrame(
+        data={'file_path': [wav_path[fp] for fp in sorted_todo],
+              'length': list(reversed(sorted(tr_x))),
+              'label': [wav_text[fp] for fp in sorted_todo]})
+    df.to_csv(os.path.join(output_dir, args.name + '.csv'))
+
+    print('All done, saved at', output_dir, 'exit.')
+
 ########
 # MAIN #
 ########
@@ -95,21 +140,24 @@ def main():
     elif 'timit' in args.input_data.lower():
         SETS = ['TRAIN', 'TEST']
     else:
-        raise NotImplementedError
+        SETS = ["dev", "train"]
+        #raise NotImplementedError
     # change the SETS list to match your dataset, for example:
     # SETS = ['train', 'dev', 'test']
     # SETS = ['TRAIN', 'TEST']
     # SETS = ['train-clean-100', 'train-clean-360', 'train-other-500', 'dev-clean', 'dev-other', 'test-clean', 'test-other']
     
     # Select data sets
-    for idx, s in enumerate(SETS):
-        print('\t', idx, ':', s)
-    tr_set = input('Please enter the index of splits you wish to use preprocess. (seperate with space): ')
-    tr_set = [SETS[int(t)] for t in tr_set.split(' ')]
+    # for idx, s in enumerate(SETS):
+    #     print('\t', idx, ':', s)
+    # tr_set = input('Please enter the index of splits you wish to use preprocess. (seperate with space): ')
+    # tr_set = [SETS[int(t)] for t in tr_set.split(' ')]
 
     # Acoustic Feature Extraction & Make Data Table
-    generate_length(args, tr_set, args.audio_extension)
-
+    if args.text == "":
+        generate_length(args, SETS, args.audio_extension)
+    else :
+        generate_length_and_label(args)
 
 if __name__ == '__main__':
     main()

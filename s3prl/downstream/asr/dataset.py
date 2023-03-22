@@ -11,7 +11,7 @@
 # IMPORTATION #
 ###############
 import logging
-import os
+import os, numpy as np
 import random
 #-------------#
 import pandas as pd
@@ -66,7 +66,13 @@ class SequenceDataset(Dataset):
         assert len(X) != 0, f"0 data found for {split}"
 
         # Transcripts
-        Y = self._load_transcript(X)
+        if not pd.isnull(table_list['label'][0]):
+            Y = {}
+            for x,y in zip(table_list['file_path'].tolist(), table_list['label'].tolist()):
+                name = self._parse_x_name(x)
+                Y[name] = y.replace(" ", "|").upper()
+        else:
+            Y = self._load_transcript(X)
 
         x_names = set([self._parse_x_name(x) for x in X])
         y_names = set(Y.keys())
@@ -76,7 +82,7 @@ class SequenceDataset(Dataset):
 
         self.Y = {
             k: self.dictionary.encode_line(
-                v, line_tokenizer=lambda x: x.split()
+                v, line_tokenizer=lambda x: [c for c in x]
             ).long() 
             for k, v in Y.items()
         }

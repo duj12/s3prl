@@ -34,3 +34,16 @@ CUDA_VISIBLE_DEVICES=3  \
 	        -g pretrain/distiller/config_model_m.yaml -n distill-hubert-m
 
 fi
+
+if [ $stage -eq 5 ]; then
+CUDA_VISIBLE_DEVICES=6  \
+	python -u run_pretrain.py -u distiller -c pretrain/distiller/config_runner_s.yaml \
+	        -g pretrain/distiller/config_model_s2.yaml -n distill-hubert-s2
+
+fi
+
+if [ $stage -eq 6 ]; then
+CUDA_VISIBLE_DEVICES=7  \
+	python -u run_pretrain.py -u distiller -c pretrain/distiller/config_runner_s.yaml \
+	        -g pretrain/distiller/config_model_s3.yaml -n distill-hubert-s3
+fi

@@ -42,8 +42,8 @@ downstream_expert:
     dev-clean: ['dev']
     test-clean: ['test']
     num_workers: 0 #12
-    train_batch_size: 32
-    batch_size: 32
+    train_batch_size: 64
+    batch_size: 64
     eval_batch_size: 1
     libri_root: '/'
     bucket_file: './data/aishell'

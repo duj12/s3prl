@@ -70,9 +70,11 @@ class SequenceDataset(Dataset):
             Y = {}
             for x,y in zip(table_list['file_path'].tolist(), table_list['label'].tolist()):
                 name = self._parse_x_name(x)
-                Y[name] = y.replace(" ", "|").upper()
+                Y[name] = str(y).replace(" ", "|").upper()
+            line_tokenizer = lambda x: [c for c in x]
         else:
             Y = self._load_transcript(X)
+            line_tokenizer = lambda x : x.split()
 
         x_names = set([self._parse_x_name(x) for x in X])
         y_names = set(Y.keys())
@@ -82,7 +84,7 @@ class SequenceDataset(Dataset):
 
         self.Y = {
             k: self.dictionary.encode_line(
-                v, line_tokenizer=lambda x: [c for c in x]
+                v, line_tokenizer=line_tokenizer
             ).long() 
             for k, v in Y.items()
         }
@@ -91,7 +93,11 @@ class SequenceDataset(Dataset):
         self.X = []
         batch_x, batch_len = [], []
 
-        for x, x_len in tqdm(zip(X, X_lens), total=len(X), desc=f'ASR dataset {split}', dynamic_ncols=True):
+        #for x, x_len in tqdm(zip(X, X_lens), total=len(X), desc=f'ASR dataset {split}', dynamic_ncols=True):
+        for i, x in enumerate(X):
+            x_len = X_lens[i]
+            if i%1000 == 0:
+                logging.info(f"Loading ASR dataset {split}: {i} / {len(X)}")
             if self._parse_x_name(x) in usage_list:
                 batch_x.append(x)
                 batch_len.append(x_len)

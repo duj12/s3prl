@@ -3,7 +3,7 @@ runner:
   gradient_clipping: 1
   gradient_accumulate_steps: 1
   log_step: 100
-  eval_step: 2000
+  eval_step: 5000
   save_step: 500
   max_keep: 1
   eval_dataloaders:
@@ -44,8 +44,8 @@ downstream_expert:
     test-clean: ['test-clean']
     test-other: ['test-other']
     num_workers: 0 #12
-    train_batch_size: 32
-    batch_size: 32
+    train_batch_size: 64
+    batch_size: 64
     eval_batch_size: 1
     libri_root: '/data/megastore/Datasets/ASR/English/LibriSpeech/data/LibriSpeech'
     bucket_file: './data/librispeech'

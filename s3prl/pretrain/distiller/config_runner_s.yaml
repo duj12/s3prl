@@ -21,7 +21,7 @@ optimizer:
 pretrain_expert:
   datarc:
     num_workers: 2
-    train_batch_size: 36
+    train_batch_size: 32
     max_timestep: 0
     libri_root: /data/megastore/Datasets
     file_path: /data/megastore/Projects/DuJing/code/s3prl/s3prl/data/ZhEn_25k

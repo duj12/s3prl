@@ -15,35 +15,35 @@ fi
 
 
 if [ $stage -eq 2 ]; then
-CUDA_VISIBLE_DEVICES=1  \
+CUDA_VISIBLE_DEVICES=4  \
 	python -u run_pretrain.py -u distiller -c pretrain/distiller/config_runner_s.yaml \
-	        -g pretrain/distiller/config_model_s.yaml -n distill-hubert-s
+	        -g pretrain/distiller/config_model_s.yaml -n distill-hubert-s -a
 
 fi
 
 if [ $stage -eq 3 ]; then
-CUDA_VISIBLE_DEVICES=2  \
+CUDA_VISIBLE_DEVICES=5  \
 	python -u run_pretrain.py -u distiller -c pretrain/distiller/config_runner_s.yaml \
-	        -g pretrain/distiller/config_model_s1.yaml -n distill-hubert-s1
+	        -g pretrain/distiller/config_model_s1.yaml -n distill-hubert-s1 -a
 
 fi
 
 if [ $stage -eq 4 ]; then
 CUDA_VISIBLE_DEVICES=3  \
 	python -u run_pretrain.py -u distiller -c pretrain/distiller/config_runner_m.yaml \
-	        -g pretrain/distiller/config_model_m.yaml -n distill-hubert-m
+	        -g pretrain/distiller/config_model_m.yaml -n distill-hubert-m -a
 
 fi
 
 if [ $stage -eq 5 ]; then
 CUDA_VISIBLE_DEVICES=6  \
 	python -u run_pretrain.py -u distiller -c pretrain/distiller/config_runner_s.yaml \
-	        -g pretrain/distiller/config_model_s2.yaml -n distill-hubert-s2
+	        -g pretrain/distiller/config_model_s2.yaml -n distill-hubert-s2 -a
 
 fi
 
 if [ $stage -eq 6 ]; then
 CUDA_VISIBLE_DEVICES=7  \
 	python -u run_pretrain.py -u distiller -c pretrain/distiller/config_runner_s.yaml \
-	        -g pretrain/distiller/config_model_s3.yaml -n distill-hubert-s3
+	        -g pretrain/distiller/config_model_s3.yaml -n distill-hubert-s3 -a
 fi

@@ -95,16 +95,16 @@ fi
 # distiller-ft模型, librispeech
 if [ $stage -eq 9 ]; then
 CUDA_VISIBLE_DEVICES=4  \
-	python -u run_downstream.py -m train -n distiller-ft2-asr -u distiller_local -d asr -a --upstream_no_pred true \
-	-k /data/megastore/Projects/DuJing/code/s3prl/s3prl/data/pretrained_models/distiller-s/distiller-asr_e14.ckpt
+	python -u run_downstream.py -m train -n distiller-ft3-asr -u distiller_local -d asr -a --upstream_no_pred true \
+	-k /data/megastore/Projects/DuJing/code/s3prl/s3prl/data/pretrained_models/distiller-s/distiller-asr-e24.ckpt
 
 fi
 
 # distiller-ft模型, aishell
 if [ $stage -eq 10 ]; then
 CUDA_VISIBLE_DEVICES=5  \
-	python -u run_downstream.py -m train -n aishell-distiller-ft2-asr -u distiller_local -d asr -a --upstream_no_pred true \
-	-k /data/megastore/Projects/DuJing/code/s3prl/s3prl/data/pretrained_models/distiller-s/distiller-asr_e14.ckpt \
+	python -u run_downstream.py -m train -n aishell-distiller-ft3-asr -u distiller_local -d asr -a --upstream_no_pred true \
+	-k /data/megastore/Projects/DuJing/code/s3prl/s3prl/data/pretrained_models/distiller-s/distiller-asr-e24.ckpt \
 	-c downstream/asr/config_aishell.yaml
 
 fi
